@@ -22,15 +22,15 @@
           </p>
         </header>
 
-        <section class="timer" aria-labelledby="timer-title">
+        <section id="timer" class="timer" aria-labelledby="timer-title" role="region">
           <div class="timer__top">
             <h2 id="timer-title">Current Session</h2>
             <span id="modeLabel" class="timer__badge" aria-live="polite">Focus</span>
           </div>
 
-          <div class="timer__display" aria-live="polite" aria-atomic="true">
-            <p id="timeDisplay" class="timer__time">25:00</p>
-            <p id="statusText" class="timer__status">Ready to begin a focus session.</p>
+          <div class="timer__display" aria-atomic="true">
+            <p id="timeDisplay" class="timer__time" role="timer" aria-live="polite" aria-atomic="true">25:00</p>
+            <p id="statusText" class="timer__status" role="status" aria-live="polite">Ready to begin a focus session.</p>
           </div>
 
           <form class="timer__settings" aria-labelledby="settings-title">
@@ -48,10 +48,10 @@
           </form>
 
           <div class="timer__controls" aria-label="Timer controls">
-            <button id="startPauseButton" class="button button--primary" type="button">Start</button>
-            <button id="pauseButton" class="button button--secondary" type="button">Pause</button>
-            <button id="resumeButton" class="button button--secondary" type="button">Resume</button>
-            <button id="resetButton" class="button button--secondary" type="button">Reset</button>
+            <button id="startPauseButton" class="button button--primary" type="button" aria-label="Start timer (press Space to toggle)">Start</button>
+            <button id="pauseButton" class="button button--secondary" type="button" aria-label="Pause timer (press P)">Pause</button>
+            <button id="resumeButton" class="button button--secondary" type="button" aria-label="Resume timer">Resume</button>
+            <button id="resetButton" class="button button--secondary" type="button" aria-label="Reset timer (press R)">Reset</button>
           </div>
 
           <div class="timer__meta" aria-label="Session details">

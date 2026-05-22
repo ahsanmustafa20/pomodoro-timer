@@ -14,6 +14,8 @@ export function createUi(controls) {
     pauseButton: document.getElementById('pauseButton'),
     resumeButton: document.getElementById('resumeButton'),
     resetButton: document.getElementById('resetButton'),
+    focusDurationInput: document.getElementById('focusDuration'),
+    breakDurationInput: document.getElementById('breakDuration'),
     focusLength: document.getElementById('focusLength'),
     breakLength: document.getElementById('breakLength'),
     completedCount: document.getElementById('completedCount'),
@@ -25,6 +27,8 @@ export function createUi(controls) {
   dom.pauseButton.addEventListener('click', () => controls.pauseTimer());
   dom.resumeButton.addEventListener('click', () => controls.resumeTimer());
   dom.resetButton.addEventListener('click', () => controls.resetTimer());
+  dom.focusDurationInput.addEventListener('input', () => handleDurationInputChange(dom, controls));
+  dom.breakDurationInput.addEventListener('input', () => handleDurationInputChange(dom, controls));
 
   return {
     renderTimer(state) {
@@ -32,6 +36,7 @@ export function createUi(controls) {
         dom.timerSection.dataset.mode = state.mode;
         dom.timerSection.classList.toggle('timer--focus', state.mode === 'focus');
         dom.timerSection.classList.toggle('timer--break', state.mode === 'break');
+        dom.timerSection.classList.toggle('timer--running', state.isRunning);
       }
 
       dom.modeLabel.textContent = state.mode === 'focus' ? 'Focus' : 'Break';
@@ -44,6 +49,8 @@ export function createUi(controls) {
       dom.statusText.textContent = state.mode === 'focus'
         ? (state.isRunning ? 'Focus session in progress. Stay on task.' : 'Ready to begin a focus session.')
         : (state.isRunning ? 'Break in progress. Take a quick reset.' : 'Ready for a break.');
+      dom.focusDurationInput.value = String(Math.round(state.focusDuration / 60));
+      dom.breakDurationInput.value = String(Math.round(state.breakDuration / 60));
       dom.focusLength.textContent = formatShortDuration(state.focusDuration);
       dom.breakLength.textContent = formatShortDuration(state.breakDuration);
     },
@@ -83,6 +90,27 @@ function formatDuration(totalSeconds) {
 
 function formatShortDuration(totalSeconds) {
   return `${Math.round(totalSeconds / 60)} min`;
+}
+
+function handleDurationInputChange(dom, controls) {
+  const focusMinutes = parseDurationInputValue(dom.focusDurationInput.value);
+  const breakMinutes = parseDurationInputValue(dom.breakDurationInput.value);
+
+  if (focusMinutes === null || breakMinutes === null) {
+    return;
+  }
+
+  controls.updateDurations({ focusMinutes, breakMinutes });
+}
+
+function parseDurationInputValue(rawValue) {
+  const minutes = Number(rawValue);
+
+  if (!Number.isFinite(minutes) || minutes < 1) {
+    return null;
+  }
+
+  return Math.floor(minutes);
 }
 
 function getTodayHistoryEntries(history) {

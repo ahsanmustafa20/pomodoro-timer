@@ -11,6 +11,7 @@ const ui = createUi({
   pauseTimer,
   resumeTimer,
   resetTimer,
+  updateDurations,
 });
 
 const timer = new PomodoroTimer({
@@ -22,6 +23,9 @@ const timer = new PomodoroTimer({
 let latestHistory = loadDailyHistory();
 
 bootstrap();
+
+// attach keyboard shortcuts after bootstrap
+setupKeyboardShortcuts();
 
 function bootstrap() {
   const savedState = loadTimerState();
@@ -54,6 +58,54 @@ function pauseTimer() {
 function resumeTimer() {
   timer.start();
   syncTimerState();
+}
+
+function updateDurations({ focusMinutes, breakMinutes }) {
+  timer.setDurations({
+    focusDuration: focusMinutes * 60,
+    breakDuration: breakMinutes * 60,
+  });
+  syncTimerState();
+}
+
+function setupKeyboardShortcuts() {
+  document.addEventListener('keydown', (e) => {
+    // Ignore when typing in form fields or editable regions
+    const active = document.activeElement;
+    if (!active) return;
+    const isTyping = active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable;
+    if (isTyping) return;
+
+    // Use standard codes where possible and fallback to key
+    const code = e.code || '';
+    const key = (e.key || '').toLowerCase();
+
+    // Space toggles start/pause
+    if (code === 'Space' || key === ' ') {
+      e.preventDefault();
+      if (timer.isRunning) {
+        pauseTimer();
+      } else {
+        startTimer();
+      }
+      return;
+    }
+
+    if (key === 'p') {
+      pauseTimer();
+      return;
+    }
+
+    if (key === 'r') {
+      resetTimer();
+      return;
+    }
+
+    if (key === 's') {
+      startTimer();
+      return;
+    }
+  });
 }
 
 function handleTimerTick(state) {

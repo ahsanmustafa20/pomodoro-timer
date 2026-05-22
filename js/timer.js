@@ -65,6 +65,20 @@ export class PomodoroTimer {
     this.onTick(this.getState());
   }
 
+  setDurations({ focusDuration, breakDuration } = {}) {
+    const nextFocusDuration = normalizeDuration(focusDuration, this.settings.focusDuration);
+    const nextBreakDuration = normalizeDuration(breakDuration, this.settings.breakDuration);
+
+    this.settings.focusDuration = nextFocusDuration;
+    this.settings.breakDuration = nextBreakDuration;
+
+    if (!this.isRunning) {
+      this.remainingSeconds = this.getDurationForMode(this.mode);
+    }
+
+    this.onTick(this.getState());
+  }
+
   tick() {
     if (!this.isRunning) {
       return;
@@ -112,6 +126,8 @@ export class PomodoroTimer {
   }
 
   hydrate(state = {}) {
+    this.settings.focusDuration = normalizeDuration(state.focusDuration, this.settings.focusDuration);
+    this.settings.breakDuration = normalizeDuration(state.breakDuration, this.settings.breakDuration);
     this.mode = normalizeMode(state.mode);
     this.isRunning = Boolean(state.isRunning);
     this.remainingSeconds = Number.isFinite(state.remainingSeconds) ? Math.max(0, Math.floor(state.remainingSeconds)) : this.getDurationForMode(this.mode);
@@ -139,4 +155,13 @@ export class PomodoroTimer {
 
 function normalizeMode(mode) {
   return mode === 'break' ? 'break' : 'focus';
+}
+
+function normalizeDuration(value, fallback) {
+  const duration = Number(value);
+  if (!Number.isFinite(duration) || duration < 1) {
+    return fallback;
+  }
+
+  return Math.floor(duration);
 }
