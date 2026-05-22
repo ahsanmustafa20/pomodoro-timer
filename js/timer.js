@@ -2,13 +2,24 @@
   File responsibility: Timer state, countdown logic, and automatic mode switching.
 */
 
-const DEFAULT_SETTINGS = {
-  focusDuration: 25 * 60,
-  breakDuration: 5 * 60,
-};
+export const DEFAULT_FOCUS_DURATION_SECONDS = 25 * 60;
+export const DEFAULT_BREAK_DURATION_SECONDS = 5 * 60;
+
+export function formatTime(totalSeconds) {
+  const safeSeconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
+  const minutes = String(Math.floor(safeSeconds / 60)).padStart(2, '0');
+  const seconds = String(safeSeconds % 60).padStart(2, '0');
+  return `${minutes}:${seconds}`;
+}
 
 export class PomodoroTimer {
-  constructor({ focusDuration = DEFAULT_SETTINGS.focusDuration, breakDuration = DEFAULT_SETTINGS.breakDuration, onTick, onModeChange, onSessionComplete } = {}) {
+  constructor({
+    focusDuration = DEFAULT_FOCUS_DURATION_SECONDS,
+    breakDuration = DEFAULT_BREAK_DURATION_SECONDS,
+    onTick,
+    onModeChange,
+    onSessionComplete,
+  } = {}) {
     this.settings = {
       focusDuration,
       breakDuration,
@@ -22,7 +33,6 @@ export class PomodoroTimer {
     this.isRunning = false;
     this.remainingSeconds = this.settings.focusDuration;
     this.intervalId = null;
-    this.endsAt = null;
   }
 
   start() {
@@ -31,8 +41,8 @@ export class PomodoroTimer {
     }
 
     this.isRunning = true;
-    this.endsAt = Date.now() + this.remainingSeconds * 1000;
-    this.tick();
+    this.onTick(this.getState());
+    this.stopInterval();
     this.intervalId = window.setInterval(() => this.tick(), 1000);
   }
 
@@ -41,10 +51,8 @@ export class PomodoroTimer {
       return;
     }
 
-    this.remainingSeconds = this.getRemainingSeconds();
     this.stopInterval();
     this.isRunning = false;
-    this.endsAt = null;
     this.onTick(this.getState());
   }
 
@@ -53,20 +61,21 @@ export class PomodoroTimer {
     this.isRunning = false;
     this.mode = 'focus';
     this.remainingSeconds = this.settings.focusDuration;
-    this.endsAt = null;
     this.onModeChange(this.mode);
     this.onTick(this.getState());
   }
 
   tick() {
-    const remainingSeconds = this.getRemainingSeconds();
+    if (!this.isRunning) {
+      return;
+    }
 
-    if (remainingSeconds <= 0) {
+    if (this.remainingSeconds <= 1) {
       this.handleCycleEnd();
       return;
     }
 
-    this.remainingSeconds = remainingSeconds;
+    this.remainingSeconds -= 1;
     this.onTick(this.getState());
   }
 
@@ -86,11 +95,11 @@ export class PomodoroTimer {
   }
 
   getRemainingSeconds() {
-    if (!this.isRunning || this.endsAt === null) {
-      return this.remainingSeconds;
-    }
+    return this.remainingSeconds;
+  }
 
-    return Math.max(0, Math.ceil((this.endsAt - Date.now()) / 1000));
+  getFormattedTime() {
+    return formatTime(this.getRemainingSeconds());
   }
 
   getState() {
@@ -104,10 +113,9 @@ export class PomodoroTimer {
   }
 
   hydrate(state = {}) {
-    this.mode = state.mode === 'break' ? 'break' : 'focus';
+    this.mode = normalizeMode(state.mode);
     this.isRunning = Boolean(state.isRunning);
-    this.remainingSeconds = Number.isFinite(state.remainingSeconds) ? state.remainingSeconds : this.getDurationForMode(this.mode);
-    this.endsAt = this.isRunning ? Date.now() + this.remainingSeconds * 1000 : null;
+    this.remainingSeconds = Number.isFinite(state.remainingSeconds) ? Math.max(0, Math.floor(state.remainingSeconds)) : this.getDurationForMode(this.mode);
 
     if (!this.isRunning) {
       this.remainingSeconds = this.getDurationForMode(this.mode);
@@ -128,4 +136,8 @@ export class PomodoroTimer {
       this.intervalId = null;
     }
   }
+}
+
+function normalizeMode(mode) {
+  return mode === 'break' ? 'break' : 'focus';
 }

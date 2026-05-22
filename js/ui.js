@@ -10,6 +10,8 @@ export function createUi(controls) {
     timeDisplay: document.getElementById('timeDisplay'),
     statusText: document.getElementById('statusText'),
     startPauseButton: document.getElementById('startPauseButton'),
+    pauseButton: document.getElementById('pauseButton'),
+    resumeButton: document.getElementById('resumeButton'),
     resetButton: document.getElementById('resetButton'),
     focusLength: document.getElementById('focusLength'),
     breakLength: document.getElementById('breakLength'),
@@ -18,14 +20,20 @@ export function createUi(controls) {
     notificationSound: document.getElementById('notificationSound'),
   };
 
-  dom.startPauseButton.addEventListener('click', () => controls.toggleStartPause());
+  dom.startPauseButton.addEventListener('click', () => controls.startTimer());
+  dom.pauseButton.addEventListener('click', () => controls.pauseTimer());
+  dom.resumeButton.addEventListener('click', () => controls.resumeTimer());
   dom.resetButton.addEventListener('click', () => controls.resetTimer());
 
   return {
     renderTimer(state) {
       dom.modeLabel.textContent = state.mode === 'focus' ? 'Focus' : 'Break';
       dom.timeDisplay.textContent = formatDuration(state.remainingSeconds);
-      dom.startPauseButton.textContent = state.isRunning ? 'Pause' : 'Start';
+      dom.startPauseButton.textContent = 'Start';
+      dom.startPauseButton.disabled = state.isRunning;
+      dom.pauseButton.disabled = !state.isRunning;
+      dom.resumeButton.disabled = state.isRunning || state.remainingSeconds === state.focusDuration;
+      dom.resetButton.disabled = false;
       dom.statusText.textContent = state.mode === 'focus'
         ? (state.isRunning ? 'Focus session in progress. Stay on task.' : 'Ready to begin a focus session.')
         : (state.isRunning ? 'Break in progress. Take a quick reset.' : 'Ready for a break.');
@@ -67,9 +75,6 @@ export function createUi(controls) {
       }
     },
 
-    setButtonState(isRunning) {
-      dom.startPauseButton.textContent = isRunning ? 'Pause' : 'Start';
-    },
   };
 }
 

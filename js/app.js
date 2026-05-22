@@ -7,7 +7,9 @@ import { appendHistoryEntry, getTodayKey, loadDailyHistory, loadTimerState, save
 import { createUi } from './ui.js';
 
 const ui = createUi({
-  toggleStartPause,
+  startTimer,
+  pauseTimer,
+  resumeTimer,
   resetTimer,
 });
 
@@ -34,13 +36,8 @@ function bootstrap() {
   syncTimerState();
 }
 
-function toggleStartPause() {
-  if (timer.getState().isRunning) {
-    timer.pause();
-  } else {
-    timer.start();
-  }
-
+function startTimer() {
+  timer.start();
   syncTimerState();
 }
 
@@ -49,9 +46,18 @@ function resetTimer() {
   syncTimerState();
 }
 
+function pauseTimer() {
+  timer.pause();
+  syncTimerState();
+}
+
+function resumeTimer() {
+  timer.start();
+  syncTimerState();
+}
+
 function handleTimerTick(state) {
   ui.renderTimer(state);
-  ui.setButtonState(state.isRunning);
   syncTimerState();
 }
 
