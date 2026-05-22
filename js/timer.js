@@ -95,7 +95,11 @@ export class PomodoroTimer {
 
   handleCycleEnd() {
     const completedMode = this.mode;
-    this.onSessionComplete(completedMode);
+    try {
+      this.onSessionComplete(completedMode);
+    } catch (error) {
+      console.error('Session completion handler failed:', error);
+    }
 
     this.mode = completedMode === 'focus' ? 'break' : 'focus';
     this.remainingSeconds = this.getDurationForMode(this.mode);

@@ -127,9 +127,11 @@ function handleSessionComplete(mode) {
       mode: 'focus',
       date: getTodayKey(completedAt),
       completedAt: completedAt.toISOString(),
+      duration: timer.getState().focusDuration,
     });
 
     ui.renderHistory(latestHistory);
+    ui.announce('Completed focus session. Starting break.');
   }
 }
 

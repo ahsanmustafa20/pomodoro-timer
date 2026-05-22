@@ -21,6 +21,13 @@ export function createUi(controls) {
     completedCount: document.getElementById('completedCount'),
     historyList: document.getElementById('historyList'),
     notificationSound: document.getElementById('notificationSound'),
+    announcer: document.getElementById('ariaAnnouncer'),
+    testSoundButton: document.getElementById('testSoundButton'),
+  };
+
+  const notification = {
+    audioContext: null,
+    isPrimed: false,
   };
 
   dom.startPauseButton.addEventListener('click', () => controls.startTimer());
@@ -29,6 +36,21 @@ export function createUi(controls) {
   dom.resetButton.addEventListener('click', () => controls.resetTimer());
   dom.focusDurationInput.addEventListener('input', () => handleDurationInputChange(dom, controls));
   dom.breakDurationInput.addEventListener('input', () => handleDurationInputChange(dom, controls));
+  if (dom.testSoundButton) {
+    dom.testSoundButton.addEventListener('click', () => {
+      playNotification().catch((err) => {
+        console.error('Notification playback failed:', err);
+        alert('Notification failed to play. Check console for details and ensure you interacted with the page first.');
+      });
+    });
+  }
+
+  const primeAudioOnGesture = () => {
+    ensureAudioContext(notification);
+    notification.isPrimed = true;
+    window.removeEventListener('pointerdown', primeAudioOnGesture);
+  };
+  window.addEventListener('pointerdown', primeAudioOnGesture, { once: true });
 
   return {
     renderTimer(state) {
@@ -72,11 +94,14 @@ export function createUi(controls) {
     },
 
     playNotification() {
-      dom.notificationSound.currentTime = 0;
-      const promise = dom.notificationSound.play();
-      if (promise && typeof promise.catch === 'function') {
-        promise.catch(() => {});
-      }
+      return playNotification(notification, dom.notificationSound);
+    },
+
+    announce(message) {
+      if (!dom.announcer) return;
+      dom.announcer.textContent = '';
+      // slight delay to ensure assistive tech notices changes
+      setTimeout(() => { dom.announcer.textContent = String(message); }, 50);
     },
 
   };
@@ -86,6 +111,81 @@ function formatDuration(totalSeconds) {
   const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
   const seconds = String(totalSeconds % 60).padStart(2, '0');
   return `${minutes}:${seconds}`;
+}
+
+function playNotification(notification, notificationSound) {
+  return new Promise((resolve, reject) => {
+    try {
+      const ctx = ensureAudioContext(notification);
+      if (!ctx) {
+        reject(new Error('AudioContext not available'));
+        return;
+      }
+
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+
+      // Try the audio element first, but do not depend on it.
+      if (notificationSound) {
+        try {
+          notificationSound.pause();
+          notificationSound.currentTime = 0;
+          const audioPromise = notificationSound.play();
+          if (audioPromise && typeof audioPromise.catch === 'function') {
+            audioPromise.catch(() => {});
+          }
+        } catch (error) {
+          console.warn('Audio element playback failed, using bell tone fallback:', error);
+        }
+      }
+
+      playBellTone(ctx);
+      resolve();
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+function ensureAudioContext(notification) {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) {
+    return null;
+  }
+
+  if (!notification.audioContext) {
+    notification.audioContext = new Ctx();
+  }
+
+  return notification.audioContext;
+}
+
+function playBellTone(ctx) {
+  const oscillator = ctx.createOscillator();
+  const gainNode = ctx.createGain();
+
+  oscillator.type = 'sine';
+  oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+  oscillator.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.18);
+
+  gainNode.gain.setValueAtTime(0.0001, ctx.currentTime);
+  gainNode.gain.linearRampToValueAtTime(0.14, ctx.currentTime + 0.01);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+
+  oscillator.connect(gainNode);
+  gainNode.connect(ctx.destination);
+  oscillator.start(ctx.currentTime);
+  oscillator.stop(ctx.currentTime + 0.9);
+
+  oscillator.onended = () => {
+    try {
+      oscillator.disconnect();
+      gainNode.disconnect();
+    } catch (error) {
+      // ignore disconnect errors
+    }
+  };
 }
 
 function formatShortDuration(totalSeconds) {
@@ -129,20 +229,35 @@ function createEmptyHistoryItem() {
 
 function createHistoryItem(entry, index) {
   const item = document.createElement('li');
-  const label = document.createElement('span');
-  label.textContent = `Session ${index + 1}`;
+  // Format: ✓ 25:00 focus — 3:42pm
+  const check = document.createElement('span');
+  check.textContent = '✓';
+  check.setAttribute('aria-hidden', 'true');
+  check.style.marginRight = '0.5rem';
+
+  const dur = document.createElement('span');
+  const durationSeconds = Number(entry.duration) || 0;
+  dur.textContent = formatDurationShort(durationSeconds);
+  dur.style.marginRight = '0.5rem';
+
+  const mode = document.createElement('span');
+  mode.textContent = entry.mode || 'focus';
+  mode.style.marginRight = '0.5rem';
+
+  const sep = document.createElement('span');
+  sep.textContent = '—';
+  sep.style.marginRight = '0.5rem';
 
   const timestamp = document.createElement('time');
   const dateValue = getEntryDate(entry);
-
   if (dateValue) {
     timestamp.dateTime = dateValue.toISOString();
     timestamp.textContent = formatHistoryTimestamp(dateValue);
   } else {
-    timestamp.textContent = entry.timeLabel;
+    timestamp.textContent = entry.timeLabel || '';
   }
 
-  item.append(label, timestamp);
+  item.append(check, dur, mode, sep, timestamp);
   return item;
 }
 
@@ -163,9 +278,14 @@ function getEntryTimestamp(entry) {
 }
 
 function formatHistoryTimestamp(dateValue) {
-  return dateValue.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
+  // e.g. 3:42pm (lowercase am/pm)
+  const opts = { hour: 'numeric', minute: '2-digit' };
+  const str = dateValue.toLocaleTimeString([], opts);
+  return str.replace(/AM|PM/, (m) => m.toLowerCase());
+}
+
+function formatDurationShort(totalSeconds) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
 }

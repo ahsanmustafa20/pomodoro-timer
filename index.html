@@ -52,6 +52,7 @@
             <button id="pauseButton" class="button button--secondary" type="button" aria-label="Pause timer (press P)">Pause</button>
             <button id="resumeButton" class="button button--secondary" type="button" aria-label="Resume timer">Resume</button>
             <button id="resetButton" class="button button--secondary" type="button" aria-label="Reset timer (press R)">Reset</button>
+            <button id="testSoundButton" class="button button--secondary" type="button" aria-label="Test notification sound">Test sound</button>
           </div>
 
           <div class="timer__meta" aria-label="Session details">
@@ -80,6 +81,8 @@
         </section>
       </main>
     </div>
+
+    <div id="ariaAnnouncer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
     <audio id="notificationSound" src="assets/bell.mp3" preload="auto"></audio>
     <script type="module" src="js/app.js"></script>
