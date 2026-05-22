@@ -85,7 +85,6 @@ export class PomodoroTimer {
 
     this.mode = completedMode === 'focus' ? 'break' : 'focus';
     this.remainingSeconds = this.getDurationForMode(this.mode);
-    this.endsAt = Date.now() + this.remainingSeconds * 1000;
     this.onModeChange(this.mode);
     this.onTick(this.getState());
   }

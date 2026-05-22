@@ -6,6 +6,7 @@ import { getTodayKey } from './storage.js';
 
 export function createUi(controls) {
   const dom = {
+    timerSection: document.querySelector('.timer'),
     modeLabel: document.getElementById('modeLabel'),
     timeDisplay: document.getElementById('timeDisplay'),
     statusText: document.getElementById('statusText'),
@@ -27,6 +28,12 @@ export function createUi(controls) {
 
   return {
     renderTimer(state) {
+      if (dom.timerSection) {
+        dom.timerSection.dataset.mode = state.mode;
+        dom.timerSection.classList.toggle('timer--focus', state.mode === 'focus');
+        dom.timerSection.classList.toggle('timer--break', state.mode === 'break');
+      }
+
       dom.modeLabel.textContent = state.mode === 'focus' ? 'Focus' : 'Break';
       dom.timeDisplay.textContent = formatDuration(state.remainingSeconds);
       dom.startPauseButton.textContent = 'Start';
@@ -42,28 +49,18 @@ export function createUi(controls) {
     },
 
     renderHistory(history) {
-      const todayKey = getTodayKey();
-      const todayEntries = history.filter((entry) => entry.date === todayKey);
+      const todayEntries = getTodayHistoryEntries(history);
 
       dom.completedCount.textContent = String(todayEntries.length);
       dom.historyList.innerHTML = '';
 
       if (todayEntries.length === 0) {
-        const emptyItem = document.createElement('li');
-        emptyItem.className = 'history__empty';
-        emptyItem.textContent = 'No focus sessions completed today yet.';
-        dom.historyList.append(emptyItem);
+        dom.historyList.append(createEmptyHistoryItem());
         return;
       }
 
       todayEntries.forEach((entry, index) => {
-        const item = document.createElement('li');
-        const label = document.createElement('span');
-        label.textContent = `Session ${todayEntries.length - index}`;
-        const time = document.createElement('span');
-        time.textContent = entry.timeLabel;
-        item.append(label, time);
-        dom.historyList.append(item);
+        dom.historyList.append(createHistoryItem(entry, index));
       });
     },
 
@@ -86,4 +83,61 @@ function formatDuration(totalSeconds) {
 
 function formatShortDuration(totalSeconds) {
   return `${Math.round(totalSeconds / 60)} min`;
+}
+
+function getTodayHistoryEntries(history) {
+  const todayKey = getTodayKey();
+  return history
+    .filter((entry) => entry.date === todayKey && entry.mode !== 'break')
+    .sort((a, b) => getEntryTimestamp(b) - getEntryTimestamp(a));
+}
+
+function createEmptyHistoryItem() {
+  const emptyItem = document.createElement('li');
+  emptyItem.className = 'history__empty';
+  emptyItem.textContent = 'No focus sessions completed today yet.';
+  return emptyItem;
+}
+
+function createHistoryItem(entry, index) {
+  const item = document.createElement('li');
+  const label = document.createElement('span');
+  label.textContent = `Session ${index + 1}`;
+
+  const timestamp = document.createElement('time');
+  const dateValue = getEntryDate(entry);
+
+  if (dateValue) {
+    timestamp.dateTime = dateValue.toISOString();
+    timestamp.textContent = formatHistoryTimestamp(dateValue);
+  } else {
+    timestamp.textContent = entry.timeLabel;
+  }
+
+  item.append(label, timestamp);
+  return item;
+}
+
+function getEntryDate(entry) {
+  if (typeof entry.completedAt === 'string') {
+    const parsedDate = new Date(entry.completedAt);
+    if (!Number.isNaN(parsedDate.getTime())) {
+      return parsedDate;
+    }
+  }
+
+  return null;
+}
+
+function getEntryTimestamp(entry) {
+  const entryDate = getEntryDate(entry);
+  return entryDate ? entryDate.getTime() : 0;
+}
+
+function formatHistoryTimestamp(dateValue) {
+  return dateValue.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
 }
