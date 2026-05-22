@@ -22,7 +22,6 @@ export function createUi(controls) {
     historyList: document.getElementById('historyList'),
     notificationSound: document.getElementById('notificationSound'),
     announcer: document.getElementById('ariaAnnouncer'),
-    testSoundButton: document.getElementById('testSoundButton'),
   };
 
   const notification = {
@@ -36,14 +35,7 @@ export function createUi(controls) {
   dom.resetButton.addEventListener('click', () => controls.resetTimer());
   dom.focusDurationInput.addEventListener('input', () => handleDurationInputChange(dom, controls));
   dom.breakDurationInput.addEventListener('input', () => handleDurationInputChange(dom, controls));
-  if (dom.testSoundButton) {
-    dom.testSoundButton.addEventListener('click', () => {
-      playNotification().catch((err) => {
-        console.error('Notification playback failed:', err);
-        alert('Notification failed to play. Check console for details and ensure you interacted with the page first.');
-      });
-    });
-  }
+  // Test sound removed — no manual test button wired.
 
   const primeAudioOnGesture = () => {
     ensureAudioContext(notification);
